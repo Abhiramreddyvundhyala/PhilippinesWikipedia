@@ -69,5 +69,5 @@ if st.button("🔍 Analyze Sentiment"):
 
 # Footer
 st.markdown("---")
-st.markdown("📘 Model trained on Argentina Wikipedia content using TextBlob + TF-IDF + SMOTE + Random Forest.")
+st.markdown("📘 Model trained on Philippines Wikipedia content using TextBlob + TF-IDF + SMOTE + Random Forest.")
 st.markdown("👨‍💻 Created by *Abhiram Reddy*")
