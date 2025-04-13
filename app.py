@@ -1,4 +1,13 @@
+# 1. Page configuration MUST come first
 import streamlit as st
+st.set_page_config(
+    page_title="Wikipedia Sentiment Analyzer",
+    page_icon="📊",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# 2. Then import other libraries
 import requests
 from bs4 import BeautifulSoup
 import re
@@ -13,41 +22,8 @@ import pickle
 from nltk.tokenize import sent_tokenize, word_tokenize
 from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import TfidfVectorizer
-import plotly.express as px
-import plotly.graph_objects as go
-from PIL import Image
-import numpy as np
 
-# Set up NLTK
-@st.cache_resource
-def setup_nltk():
-    nltk.download('punkt')
-    nltk.download('stopwords')
-
-setup_nltk()
-
-# Load models
-@st.cache_resource
-def load_models():
-    try:
-        vectorizer = pickle.load(open("tfidf.pkl", "rb"))
-        model = pickle.load(open("sentiment_model.pkl", "rb"))
-        return vectorizer, model
-    except Exception as e:
-        st.error(f"Error loading models: {e}")
-        return None, None
-
-vectorizer, model = load_models()
-
-# App configuration
-st.set_page_config(
-    page_title="Wikipedia Sentiment Analyzer",
-    page_icon="📊",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
-# Custom CSS
+# 3. Then add your custom CSS
 st.markdown("""
     <style>
     .main {background-color: #f8f9fa;}
