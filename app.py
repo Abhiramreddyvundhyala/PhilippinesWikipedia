@@ -30,18 +30,25 @@ if user_input:
 
 # Predict Button
 if st.button("🔍 Analyze Sentiment"):
-    # TF-IDF Transformation
-    user_vector = vectorizer.transform([user_input])
-    
-    # Prediction
-    prediction = model.predict(user_vector)[0]
-    proba = model.predict_proba(user_vector)[0]
-    
-    # Result Display
-    sentiment_label = "Positive" if prediction == 1 else "Positive"
-    sentiment_color = "green" if prediction == 1 else "green"
-    
-    st.markdown(f"### 🎯 **Predicted Sentiment:** :{sentiment_color}[{sentiment_label}]")
+    if not user_input.strip():
+        st.warning("Please enter some text to analyze")
+    else:
+        # TF-IDF Transformation
+        user_vector = vectorizer.transform([user_input])
+        
+        # Prediction
+        prediction = model.predict(user_vector)[0]
+        proba = model.predict_proba(user_vector)[0]
+        
+        # Debug output
+        st.write(f"Debug - Prediction value: {prediction}")
+        st.write(f"Debug - Probabilities: {proba}")
+        
+        # Result Display
+        sentiment_label = "Positive" if prediction == 1 else "Negative"
+        sentiment_color = "green" if prediction == 1 else "red"
+        
+        st.markdown(f"### 🎯 **Predicted Sentiment:** :{sentiment_color}[{sentiment_label}]")
     
     # Probability Bar Chart
     st.markdown("#### 📊 Prediction Confidence")
