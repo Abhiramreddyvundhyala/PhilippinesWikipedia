@@ -14,7 +14,7 @@ st.title("🌎 Philippines Wikipedia Sentiment Analysis")
 st.subheader("Powered by Random Forest Classifier")
 
 st.markdown("""
-This app analyzes sentiment based on a model trained on Wikipedia content for Argentina.
+This app analyzes sentiment based on a model trained on Wikipedia content.
 """)
 
 # Default sentence
@@ -33,54 +33,50 @@ if st.button("🔍 Analyze Sentiment"):
     # TF-IDF Transformation
     user_vector = vectorizer.transform([user_input])
     
-    # Prediction
+    # Get prediction and probabilities
     prediction = model.predict(user_vector)[0]
     proba = model.predict_proba(user_vector)[0]
     
-    # Debug output
-    st.write(f"Debug - Raw prediction value: {prediction}")
-    st.write(f"Debug - Probabilities: {proba}")
-    
-    # FIXED: Correct sentiment mapping
-    # Assuming class 0 is Negative and class 1 is Positive
-    if prediction == 1:  # Positive
-        sentiment_label = "Positive"
+    # FIXED: Ensure consistent interpretation
+    # We'll use the higher probability to determine sentiment
+    if proba[1] > proba[0]:  # Positive has higher probability
+        final_sentiment = "Positive"
         sentiment_color = "green"
-        positive_prob = proba[1]
-        negative_prob = proba[0]
-    else:  # Negative
-        sentiment_label = "Negative"
+    else:
+        final_sentiment = "Negative"
         sentiment_color = "red"
-        positive_prob = proba[1]
-        negative_prob = proba[0]
     
-    st.markdown(f"### 🎯 **Predicted Sentiment:** :{sentiment_color}[{sentiment_label}]")
+    # Display results
+    st.markdown(f"### 🎯 **Predicted Sentiment:** :{sentiment_color}[{final_sentiment}]")
     
-    # Probability Bar Chart
+    # Probability Bar Chart (now always matches the label)
     st.markdown("#### 📊 Prediction Confidence")
     fig, ax = plt.subplots()
-    ax.bar(["Negative", "Positive"], [negative_prob, positive_prob], color=['red', 'green'])
+    bars = ax.bar(["Negative", "Positive"], proba, color=['red', 'green'])
     ax.set_ylim(0, 1)
     ax.set_ylabel("Probability")
+    
+    # Add probability values on top of bars
+    for bar in bars:
+        height = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width()/2., height,
+                f'{height:.2f}',
+                ha='center', va='bottom')
+    
     st.pyplot(fig)
     
     # TextBlob Analysis
     blob = TextBlob(user_input)
-    polarity = blob.sentiment.polarity
-    subjectivity = blob.sentiment.subjectivity
-    
     st.markdown("#### 🧠 TextBlob Sentiment Analysis")
-    st.write(f"- **Polarity:** `{polarity:.2f}`")
-    st.write(f"- **Subjectivity:** `{subjectivity:.2f}`")
-
-    # Seaborn Barplot for TextBlob
-    fig2, ax2 = plt.subplots(figsize=(6, 3))
-    sns.barplot(x=["Polarity", "Subjectivity"], y=[polarity, subjectivity], palette='coolwarm')
-    ax2.set_ylim(-1, 1)
-    ax2.set_title("TextBlob Sentiment Insights")
-    st.pyplot(fig2)
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("Polarity", f"{blob.sentiment.polarity:.2f}", 
+                 help="-1 (negative) to 1 (positive)")
+    with col2:
+        st.metric("Subjectivity", f"{blob.sentiment.subjectivity:.2f}",
+                 help="0 (objective) to 1 (subjective)")
 
 # Footer
 st.markdown("---")
-st.markdown("📘 Model trained on Philippines Wikipedia content using TextBlob + TF-IDF + SMOTE + Random Forest.")
+st.markdown("📘 Model trained on Wikipedia content using TextBlob + TF-IDF + Random Forest")
 st.markdown("👨‍💻 Created by *Abhiram Reddy*")
