@@ -1,0 +1,15 @@
+streamlit
+requests
+beautifulsoup4
+nltk
+pandas
+matplotlib
+seaborn
+wordcloud
+textblob
+scikit-learn
+plotly
+pillow
+numpy
+imbalanced-learn
+joblib
