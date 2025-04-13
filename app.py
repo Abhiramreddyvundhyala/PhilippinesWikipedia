@@ -4,100 +4,120 @@ from textblob import TextBlob
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 import seaborn as sns
+import numpy as np
 
 # Load trained model and vectorizer
-model = joblib.load("sentiment_model.pkl")
-vectorizer = joblib.load("tfidf.pkl")
-
-# Verify model classes
 try:
-    class_order = model.classes_
-    st.write(f"Model class order: {class_order}")  # Debug output
-except AttributeError:
-    class_order = [0, 1]  # Default assumption if classes not available
+    model = joblib.load("sentiment_model.pkl")
+    vectorizer = joblib.load("tfidf.pkl")
+except Exception as e:
+    st.error(f"Error loading model: {e}")
+    st.stop()
 
-# App Title
+# Debug: Check model classes and features
+try:
+    st.write("### Model Debug Info")
+    st.write(f"Model classes: {model.classes_}")
+    st.write(f"Number of features: {len(vectorizer.get_feature_names_out())}")
+except Exception as e:
+    st.warning(f"Couldn't get model details: {e}")
+
+# App Interface
 st.title("🌎 Philippines Wikipedia Sentiment Analysis")
 st.subheader("Powered by Random Forest Classifier")
 
-st.markdown("""
-This app analyzes sentiment based on a model trained on Wikipedia content.
-""")
-
-# Default sentence
-default_sentence = "Philippines is a stunning country with passionate people and rich culture."
+# Default examples
+positive_example = "Philippines has beautiful beaches and friendly people"
+negative_example = "The worst experience ever, terrible service"
 
 # Input Text
-user_input = st.text_area("✍️ Enter your sentence here:", default_sentence)
+user_input = st.text_area("✍️ Enter your sentence here:", positive_example)
 
-# Show Word Cloud
-if user_input:
-    wordcloud = WordCloud(width=800, height=400, background_color='white').generate(user_input)
-    st.image(wordcloud.to_array(), caption="Word Cloud of Your Input", use_container_width=True)
+# Prediction Function
+def analyze_sentiment(text):
+    try:
+        # Vectorize input
+        text_vector = vectorizer.transform([text])
+        
+        # Predict
+        prediction = model.predict(text_vector)[0]
+        probabilities = model.predict_proba(text_vector)[0]
+        
+        # Get class order (handle different sklearn versions)
+        if hasattr(model, 'classes_'):
+            classes = model.classes_
+            if 1 in classes and 0 in classes:
+                positive_idx = np.where(classes == 1)[0][0]
+                negative_idx = np.where(classes == 0)[0][0]
+            else:  # Handle [-1, 1] systems
+                positive_idx = np.where(classes == 1)[0][0] if 1 in classes else 1
+                negative_idx = np.where(classes == -1)[0][0] if -1 in classes else 0
+        else:
+            positive_idx = 1
+            negative_idx = 0
+        
+        return {
+            'prediction': prediction,
+            'positive_prob': probabilities[positive_idx],
+            'negative_prob': probabilities[negative_idx],
+            'is_positive': prediction == classes[positive_idx] if hasattr(model, 'classes_') else prediction == 1
+        }
+    except Exception as e:
+        st.error(f"Prediction error: {e}")
+        return None
 
 # Predict Button
 if st.button("🔍 Analyze Sentiment"):
     if not user_input.strip():
         st.warning("Please enter some text to analyze")
     else:
-        # TF-IDF Transformation
-        user_vector = vectorizer.transform([user_input])
+        # Show Word Cloud
+        wordcloud = WordCloud(width=800, height=400, background_color='white').generate(user_input)
+        st.image(wordcloud.to_array(), caption="Word Cloud", use_container_width=True)
         
-        # Prediction
-        prediction = model.predict(user_vector)[0]
-        proba = model.predict_proba(user_vector)[0]
-        
-        # Debug output
-        st.write(f"Debug - Raw prediction value: {prediction}")
-        st.write(f"Debug - Probabilities: {proba}")
-        st.write(f"Debug - Model classes: {class_order}")
-        
-        # Determine correct labels based on model's class order
-        if len(class_order) == 2:
-            negative_index = 0 if class_order[0] == 0 else 1
-            positive_index = 1 - negative_index
+        # Analyze sentiment
+        result = analyze_sentiment(user_input)
+        if result:
+            # Display results
+            st.write("### Prediction Details")
+            st.write(f"Raw prediction value: {result['prediction']}")
+            st.write(f"Positive probability: {result['positive_prob']:.4f}")
+            st.write(f"Negative probability: {result['negative_prob']:.4f}")
             
-            negative_prob = proba[negative_index]
-            positive_prob = proba[positive_index]
+            # Determine sentiment
+            sentiment_label = "Positive" if result['is_positive'] else "Negative"
+            sentiment_color = "green" if result['is_positive'] else "red"
             
-            is_positive = (prediction == class_order[positive_index])
-        else:
-            # Fallback for unknown class arrangements
-            negative_prob = proba[0]
-            positive_prob = proba[1]
-            is_positive = (prediction == 1)
-        
-        # Result Display
-        sentiment_label = "Positive" if is_positive else "Negative"
-        sentiment_color = "green" if is_positive else "red"
-        
-        st.markdown(f"### 🎯 **Predicted Sentiment:** :{sentiment_color}[{sentiment_label}]")
-        
-        # Probability Bar Chart
-        st.markdown("#### 📊 Prediction Confidence")
-        fig, ax = plt.subplots()
-        ax.bar(["Negative", "Positive"], [negative_prob, positive_prob], color=['red', 'green'])
-        ax.set_ylim(0, 1)
-        ax.set_ylabel("Probability")
-        st.pyplot(fig)
-        
-        # TextBlob Analysis
-        blob = TextBlob(user_input)
-        polarity = blob.sentiment.polarity
-        subjectivity = blob.sentiment.subjectivity
-        
-        st.markdown("#### 🧠 TextBlob Sentiment Analysis")
-        st.write(f"- **Polarity:** `{polarity:.2f}` (Range: -1 to 1)")
-        st.write(f"- **Subjectivity:** `{subjectivity:.2f}` (Range: 0 to 1)")
+            st.markdown(f"## 🎯 **Predicted Sentiment:** :{sentiment_color}[{sentiment_label}]")
+            
+            # Probability chart
+            fig, ax = plt.subplots()
+            ax.bar(["Negative", "Positive"], 
+                  [result['negative_prob'], result['positive_prob']], 
+                  color=['red', 'green'])
+            ax.set_ylim(0, 1)
+            ax.set_ylabel("Probability")
+            st.pyplot(fig)
+            
+            # TextBlob analysis
+            blob = TextBlob(user_input)
+            st.write("### TextBlob Analysis")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Polarity", f"{blob.sentiment.polarity:.2f}", 
+                         help="-1 (negative) to 1 (positive)")
+            with col2:
+                st.metric("Subjectivity", f"{blob.sentiment.subjectivity:.2f}",
+                         help="0 (objective) to 1 (subjective)")
 
-        # Seaborn Barplot for TextBlob
-        fig2, ax2 = plt.subplots(figsize=(6, 3))
-        sns.barplot(x=["Polarity", "Subjectivity"], y=[polarity, subjectivity], palette='coolwarm')
-        ax2.set_ylim(-1, 1)
-        ax2.set_title("TextBlob Sentiment Insights")
-        st.pyplot(fig2)
+# Test Cases Section
+with st.expander("🧪 Test Cases"):
+    st.write("Try these test sentences:")
+    if st.button("Positive Example"):
+        st.session_state.user_input = positive_example
+    if st.button("Negative Example"):
+        st.session_state.user_input = negative_example
 
 # Footer
 st.markdown("---")
-st.markdown("📘 Model trained on Wikipedia content using TextBlob + TF-IDF + SMOTE + Random Forest.")
-st.markdown("👨‍💻 Created by *Abhiram Reddy*")
+st.markdown("📘 Model trained on Wikipedia content using TF-IDF and Random Forest")
